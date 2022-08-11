@@ -1,32 +1,33 @@
 import requests
 from typing import Optional
-from fastapi import FastAPI, Request
-from fastapi.responses import Response
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import Response as Res
+import json
 
 app = FastAPI()
 
-@app.api_route("/proxer/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
-def proxer(rest: str, request: Request, payload: Optional[dict] = None):
+
+@app.api_route("/proxer/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
+def proxer(rest: str, response: Response, request: Request, payload: Optional[dict] = None):
 
     h = dict(request.headers)
-    # TODO: magari sovrascrivilo
     if h.get('host'):
         del h['host']
-
     call = getattr(requests, request.method.lower())
+    print(h)
     if payload:
-        # TODO: magari fare per metodo
-        response = call(url=rest, data=payload,
-                        headers=h, allow_redirects=False)
+        # TODO: magari fare per metodo (anzi: sicuramente), comunque cosi ci funzia solo per json (magari conviene davvero farlo piu a basso livello, via socket?)
+        r = call(url=rest, data=json.dumps(payload),
+                 headers=h, stream=True)
     else:
-        response = call(url=rest, headers=h, allow_redirects=False)
-    response = requests.get(rest)
+        r = call(url=rest, headers=h, stream=True)
+    h = r.headers
+
+    for key, value in h.items():
+        response.headers[key] = value
+
     response.headers['Access-Control-Allow-Origin'] = '*'
 
-    # TODO: prima o poi risolvilo, per ora va bene
-    if response.headers.get('Content-Encoding'):
-        del response.headers['Content-Encoding']
-
-    r = Response(headers=response.headers, content=response.content,
-                 status_code=response.status_code)
+    r = Res(headers=response.headers, content=r.raw.data,
+                 status_code=r.status_code)
     return r
