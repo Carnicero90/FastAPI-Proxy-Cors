@@ -14,6 +14,7 @@ def proxer(rest: str, response: Response, request: Request, payload: Optional[di
     if h.get('host'):
         del h['host']
     call = getattr(requests, request.method.lower())
+    rest = rest + '?' + str(request.query_params)
     print(h)
     if payload:
         # TODO: magari fare per metodo (anzi: sicuramente), comunque cosi ci funzia solo per json (magari conviene davvero farlo piu a basso livello, via socket?)
